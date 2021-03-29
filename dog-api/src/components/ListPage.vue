@@ -1,7 +1,6 @@
 <template>
   <v-container>
     <v-row class="text-center">
-
       <v-col cols="12">
         <v-img
           :src="require('../assets/logo.svg')"
@@ -46,19 +45,20 @@
                 <v-card>
                   <v-card-title class="subheading font-weight-bold">
                     {{ item.raca }}
-                    <span>
-                      <v-icon>mdi-star-outline</v-icon>
-                    </span>
+
+                    <v-btn icon v-model="item.favorite" @click="saveFavorite(items, item.favorite = !item.favorite)">
+                      <v-icon>{{
+                        item.favorite ? "mdi-star-remove" : "mdi-star-plus"
+                      }}</v-icon>
+                    </v-btn>
                   </v-card-title>
 
                   <v-divider></v-divider>
 
                   <v-list dense>
                     <v-list-item>
-                      <v-list-item-content
-                        class="align-end"
-                      >
-                        {{ item.subRaca || '-' }}
+                      <v-list-item-content class="align-end">
+                        {{ item.subRaca || "-" }}
                       </v-list-item-content>
                     </v-list-item>
                   </v-list>
@@ -68,7 +68,7 @@
           </template>
 
           <template v-slot:footer>
-            <v-row class="mt-2" align="center" justify="center">
+            <v-row class="mt-2 responsive-row" align="center" justify="center">
               <span class="grey--text">Items per page</span>
               <v-menu offset-y>
                 <template v-slot:activator="{ on, attrs }">
@@ -81,7 +81,7 @@
                     v-on="on"
                   >
                     {{ itemsPerPage }}
-                    <v-icon>mdi-chevron-down</v-icon>                    
+                    <v-icon>mdi-chevron-down</v-icon>
                   </v-btn>
                 </template>
                 <v-list>
@@ -141,41 +141,51 @@ export default {
       sortDesc: false,
       page: 1,
       itemsPerPage: 8,
-      sortBy: "name",
-      items: []
+      sortBy: "name",      
+      items: [],
     };
   },
 
   computed: {
     numberOfPages() {
       return Math.ceil(this.items.length / this.itemsPerPage);
-    }
+    },
   },
 
   mounted() {
-    this.getData();
+    let data = JSON.parse(localStorage.getItem('lista_raca'));    
+
+    if(data) {
+      this.items = data
+    } else {
+      this.getData();
+    }    
   },
 
   methods: {
-    getData() {             
+    getData() {
       this.$http.get("https://dog.ceo/api/breeds/list/all").then(
-        (response) => {                     
-          let dogs = response.data.message
+        (response) => {
+          let dogs = response.data.message;
 
-          for(const key in dogs) {              
-              if(dogs[key].length)   {
-                dogs[key].forEach(dog => {
-                  this.items.push({raca: `${key}`, subRaca: `${dog}`})                  
-                })
-              } else {
-                this.items.push({'raca': key})
-              }              
-          }                    
+          for (const key in dogs) {
+            if (dogs[key].length) {
+              dogs[key].forEach((dog) => {
+                this.items.push({ raca: `${key}`, subRaca: `${dog}`, favorite: false });
+              });
+            } else {
+              this.items.push({ raca: key, favorite: false });
+            }
+          }          
         },
         (response) => {
-          console.log(response.err)
+          console.log(response.err);
         }
       );
+    },
+
+    saveFavorite(items) {      
+      localStorage.setItem('lista_raca', JSON.stringify(items));                
     },
 
     nextPage() {
@@ -192,3 +202,10 @@ export default {
   },
 };
 </script>
+<style scoped>
+  @media(max-width: 600px) {
+    .responsive-row {
+      width: 68%;
+    }
+  }
+</style>
