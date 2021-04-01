@@ -52,7 +52,57 @@
                 md="4"
                 lg="3"
               >
-                <v-card>
+                <v-card max-width="400" class="mx-auto" v-if="true">
+                  <v-img :src="dogImage[index]" height="300px" dark>
+                    <v-row class="fill-height">
+                      <v-card-title>
+                        <v-btn icon @click="saveFavorite(item.breed)">
+                          <v-icon
+                            color="red"
+                            v-if="favorites.includes(item.breed)"
+                          >
+                            mdi-heart
+                          </v-icon>
+                          <v-icon v-else>
+                            mdi-heart-outline
+                          </v-icon>
+                        </v-btn>
+                      </v-card-title>
+
+                      <v-card-title class="white--text pl-0 pt-5">
+                        <div class="display-1 text-center">
+                          {{ item.breed }}
+                        </div>
+                      </v-card-title>
+                    </v-row>
+                  </v-img>
+
+                  <v-list two-line>
+                    <v-row>
+                      <v-col cols="6" sm="4"
+                        v-for="subBreed in item.subBreed"
+                        :key="subBreed"
+                      >
+                        <v-tooltip bottom>
+                          <template v-slot:activator="{ on, attrs }">
+                            <v-col>
+                              <img
+                                :src="dogSubImage[subBreed]"
+                                height="80"
+                                width="80"
+                                v-bind="attrs"
+                                v-on="on"
+                              />
+                            </v-col>
+                          </template>
+                          <span>{{ subBreed }}</span>
+                        </v-tooltip>
+                      </v-col>
+                    </v-row>
+                  </v-list>
+                </v-card>
+
+                <v-card v-if="false">
                   <v-card-title class="subheading font-weight-bold">
                     {{ item.breed }}
 
@@ -66,25 +116,32 @@
                     </v-btn>
 
                     <v-col cols="4">
-                      <img :src="dogImage[index]" height="80" width="100"/>
+                      <img :src="dogImage[index]" height="80" width="100" />
                     </v-col>
                   </v-card-title>
 
                   <v-divider />
 
                   <v-list dense>
-                    <v-list-item v-for="subBreed in item.subBreed" :key="subBreed">
+                    <v-list-item
+                      v-for="subBreed in item.subBreed"
+                      :key="subBreed"
+                    >
                       <v-list-item-content class="align-end">
                         {{ subBreed }}
                       </v-list-item-content>
-                                                                
+
                       <v-list-item-content>
                         <v-col cols="4">
-                          <img :src="dogSubImage[subBreed]" height="80" width="100" />
+                          <img
+                            :src="dogSubImage[subBreed]"
+                            height="80"
+                            width="100"
+                          />
                         </v-col>
                       </v-list-item-content>
-                    </v-list-item>                    
-                  </v-list>                  
+                    </v-list-item>
+                  </v-list>
                 </v-card>
               </v-col>
             </v-row>
@@ -179,7 +236,7 @@ export default {
       sortBy: "name",
       items: [],
       snackbarError: false,
-      favorites: [],      
+      favorites: [],
       loader: null,
       dogImage: [],
       dogSubImage: {},
@@ -192,23 +249,22 @@ export default {
     },
 
     cachorrosDaPaginaAtual() {
-      const indexInicial = ((this.page - 1) * this.itemsPerPage);
-      const indexFinal = indexInicial + this.itemsPerPage;   
+      const indexInicial = (this.page - 1) * this.itemsPerPage;
+      const indexFinal = indexInicial + this.itemsPerPage;
 
-      return this.items.slice(indexInicial, indexFinal);      
+      return this.items.slice(indexInicial, indexFinal);
     },
-    
+
     subRacasDaPaginaAtual() {
       return this.cachorrosDaPaginaAtual;
     },
-    
   },
 
   watch: {
-    page () {
+    page() {
       this.listaDeImagensCachorrosPaginaAtual();
       this.retornaListaSubRacaCachorro();
-    } 
+    },
   },
 
   mounted() {
@@ -216,12 +272,11 @@ export default {
   },
 
   methods: {
-
     async init() {
       await this.getData();
       this.getFavorite();
       this.listaDeImagensCachorrosPaginaAtual();
-      this.retornaListaSubRacaCachorro();      
+      this.retornaListaSubRacaCachorro();
     },
 
     async getData() {
@@ -232,71 +287,71 @@ export default {
           "https://dog.ceo/api/breeds/list/all"
         );
 
-        this.items = Object.keys(response.data.message).map((breed) =>
-          ({
-            breed,
-            subBreed: response.data.message[breed]
-          })
-        )              
-                
+        this.items = Object.keys(response.data.message).map((breed) => ({
+          breed,
+          subBreed: response.data.message[breed],
+        }));
       } catch (erro) {
-        this.snackbarError = true;        
+        this.snackbarError = true;
       }
 
       this.loader = false;
     },
 
-    async getImageBreed(breed) {         
+    async getImageBreed(breed) {
       try {
         let imagem = await this.$http.get(
           `https://dog.ceo/api/breed/${breed}/images/random`
         );
 
-        return imagem.data.message;        
+        return imagem.data.message;
       } catch (erro) {
-        this.snackbarError = true;        
-      }
-
-      return null;          
-    },
-
-    async getImageSubBreed(breed, subBreed) {
-      try {             
-        let imagemSubDog = await this.$http.get(
-            `https://dog.ceo/api/breed/${breed}/${subBreed}/images/random`
-        );
-
-        return imagemSubDog.data.message;
-      } catch (erro) {
-        this.snackbarError = true;        
+        this.snackbarError = true;
       }
 
       return null;
     },
 
-    async listaDeImagensCachorrosPaginaAtual() {      
+    async getImageSubBreed(breed, subBreed) {
+      try {
+        let imagemSubDog = await this.$http.get(
+          `https://dog.ceo/api/breed/${breed}/${subBreed}/images/random`
+        );
+
+        return imagemSubDog.data.message;
+      } catch (erro) {
+        this.snackbarError = true;
+      }
+
+      return null;
+    },
+
+    async listaDeImagensCachorrosPaginaAtual() {
       this.dogImage = [];
-      for (const imagem of this.cachorrosDaPaginaAtual) {             
-        this.dogImage.push(await this.getImageBreed(imagem.breed));                        
+      for (const imagem of this.cachorrosDaPaginaAtual) {
+        this.dogImage.push(await this.getImageBreed(imagem.breed));
       }
     },
 
-    retornaListaSubRacaCachorro() {      
-      for (const listSubRacas of this.subRacasDaPaginaAtual) {        
-        if(listSubRacas.subBreed.length) {
-          listSubRacas.subBreed.forEach((subRaca) => {            
-              this.listaDeImagensSubRaçasCachorrosPaginaAtual(listSubRacas.breed, subRaca);
-          })
-        }        
+    retornaListaSubRacaCachorro() {
+      for (const listSubRacas of this.subRacasDaPaginaAtual) {
+        if (listSubRacas.subBreed.length) {
+          listSubRacas.subBreed.forEach((subRaca) => {
+            this.listaDeImagensSubRacasCachorrosPaginaAtual(
+              listSubRacas.breed,
+              subRaca
+            );
+          });
+        }
       }
     },
 
-    async listaDeImagensSubRaçasCachorrosPaginaAtual(breed, subBreed) {    
-      if(!this.dogSubImage[subBreed]) {
+    async listaDeImagensSubRacasCachorrosPaginaAtual(breed, subBreed) {
+      if (!this.dogSubImage[subBreed]) {
         const imgSubBreed = await this.getImageSubBreed(breed, subBreed);
-  
-        this.dogSubImage[subBreed] = imgSubBreed;    
-      }    
+
+        this.dogSubImage[subBreed] = imgSubBreed;
+      }
     },
 
     getFavorite() {
