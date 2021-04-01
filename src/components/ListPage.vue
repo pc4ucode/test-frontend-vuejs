@@ -9,7 +9,17 @@
           height="200"
         />
 
+        <v-progress-circular
+          v-if="loader"
+          class="mt-5"
+          :size="70"
+          :width="7"
+          color="blue"
+          indeterminate
+        ></v-progress-circular>
+
         <v-data-iterator
+          v-if="!loader"
           :items="items"
           :items-per-page.sync="itemsPerPage"
           :page.sync="page"
@@ -44,24 +54,37 @@
               >
                 <v-card>
                   <v-card-title class="subheading font-weight-bold">
-                    {{ item.raca }}
+                    {{ item.breed }}
 
-                    <v-btn icon v-model="item.favorite" @click="saveFavorite(items, item.favorite = !item.favorite)">
-                      <v-icon>{{
-                        item.favorite ? "mdi-star-remove" : "mdi-star-plus"
-                      }}</v-icon>
+                    <v-btn icon @click="saveFavorite(item.breed)">
+                      <v-icon color="red" v-if="favorites.includes(item.breed)">
+                        mdi-heart
+                      </v-icon>
+                      <v-icon v-else>
+                        mdi-heart-outline
+                      </v-icon>
                     </v-btn>
+
+                    <v-col cols="4">
+                      <img :src="dogImage[index]" height="80" width="100"/>
+                    </v-col>
                   </v-card-title>
 
-                  <v-divider></v-divider>
+                  <v-divider />
 
                   <v-list dense>
-                    <v-list-item>
+                    <v-list-item v-for="subBreed in item.subBreed" :key="subBreed">
                       <v-list-item-content class="align-end">
-                        {{ item.subRaca || "-" }}
+                        {{ subBreed }}
                       </v-list-item-content>
-                    </v-list-item>
-                  </v-list>
+                                                                
+                      <v-list-item-content>
+                        <v-col cols="4">
+                          <img :src="dogSubImage[subBreed]" height="80" width="100" />
+                        </v-col>
+                      </v-list-item-content>
+                    </v-list-item>                    
+                  </v-list>                  
                 </v-card>
               </v-col>
             </v-row>
@@ -124,6 +147,18 @@
             </v-row>
           </template>
         </v-data-iterator>
+
+        <v-snackbar
+          v-if="snackbarError"
+          :timeout="3000"
+          :value="true"
+          absolute
+          bottom
+          color="error"
+          right
+        >
+          Erro na requisição!
+        </v-snackbar>
       </v-col>
     </v-row>
   </v-container>
@@ -131,7 +166,7 @@
 
 <script>
 export default {
-  name: "HelloWorld",
+  name: "ListPage",
 
   data() {
     return {
@@ -141,8 +176,13 @@ export default {
       sortDesc: false,
       page: 1,
       itemsPerPage: 8,
-      sortBy: "name",      
+      sortBy: "name",
       items: [],
+      snackbarError: false,
+      favorites: [],      
+      loader: null,
+      dogImage: [],
+      dogSubImage: {},
     };
   },
 
@@ -150,42 +190,129 @@ export default {
     numberOfPages() {
       return Math.ceil(this.items.length / this.itemsPerPage);
     },
+
+    cachorrosDaPaginaAtual() {
+      const indexInicial = ((this.page - 1) * this.itemsPerPage);
+      const indexFinal = indexInicial + this.itemsPerPage;   
+
+      return this.items.slice(indexInicial, indexFinal);      
+    },
+    
+    subRacasDaPaginaAtual() {
+      return this.cachorrosDaPaginaAtual;
+    },
+    
+  },
+
+  watch: {
+    page () {
+      this.listaDeImagensCachorrosPaginaAtual();
+      this.retornaListaSubRacaCachorro();
+    } 
   },
 
   mounted() {
-    let data = JSON.parse(localStorage.getItem('lista_raca'));    
-
-    if(data) {
-      this.items = data
-    } else {
-      this.getData();
-    }    
+    this.init();
   },
 
   methods: {
-    getData() {
-      this.$http.get("https://dog.ceo/api/breeds/list/all").then(
-        (response) => {
-          let dogs = response.data.message;
 
-          for (const key in dogs) {
-            if (dogs[key].length) {
-              dogs[key].forEach((dog) => {
-                this.items.push({ raca: `${key}`, subRaca: `${dog}`, favorite: false });
-              });
-            } else {
-              this.items.push({ raca: key, favorite: false });
-            }
-          }          
-        },
-        (response) => {
-          console.log(response.err);
-        }
-      );
+    async init() {
+      await this.getData();
+      this.getFavorite();
+      this.listaDeImagensCachorrosPaginaAtual();
+      this.retornaListaSubRacaCachorro();      
     },
 
-    saveFavorite(items) {      
-      localStorage.setItem('lista_raca', JSON.stringify(items));                
+    async getData() {
+      this.loader = true;
+
+      try {
+        let response = await this.$http.get(
+          "https://dog.ceo/api/breeds/list/all"
+        );
+
+        this.items = Object.keys(response.data.message).map((breed) =>
+          ({
+            breed,
+            subBreed: response.data.message[breed]
+          })
+        )              
+                
+      } catch (erro) {
+        this.snackbarError = true;        
+      }
+
+      this.loader = false;
+    },
+
+    async getImageBreed(breed) {         
+      try {
+        let imagem = await this.$http.get(
+          `https://dog.ceo/api/breed/${breed}/images/random`
+        );
+
+        return imagem.data.message;        
+      } catch (erro) {
+        this.snackbarError = true;        
+      }
+
+      return null;          
+    },
+
+    async getImageSubBreed(breed, subBreed) {
+      try {             
+        let imagemSubDog = await this.$http.get(
+            `https://dog.ceo/api/breed/${breed}/${subBreed}/images/random`
+        );
+
+        return imagemSubDog.data.message;
+      } catch (erro) {
+        this.snackbarError = true;        
+      }
+
+      return null;
+    },
+
+    async listaDeImagensCachorrosPaginaAtual() {      
+      this.dogImage = [];
+      for (const imagem of this.cachorrosDaPaginaAtual) {             
+        this.dogImage.push(await this.getImageBreed(imagem.breed));                        
+      }
+    },
+
+    retornaListaSubRacaCachorro() {      
+      for (const listSubRacas of this.subRacasDaPaginaAtual) {        
+        if(listSubRacas.subBreed.length) {
+          listSubRacas.subBreed.forEach((subRaca) => {            
+              this.listaDeImagensSubRaçasCachorrosPaginaAtual(listSubRacas.breed, subRaca);
+          })
+        }        
+      }
+    },
+
+    async listaDeImagensSubRaçasCachorrosPaginaAtual(breed, subBreed) {    
+      if(!this.dogSubImage[subBreed]) {
+        const imgSubBreed = await this.getImageSubBreed(breed, subBreed);
+  
+        this.dogSubImage[subBreed] = imgSubBreed;    
+      }    
+    },
+
+    getFavorite() {
+      if (localStorage.getItem("favorite_breed")) {
+        this.favorites = JSON.parse(localStorage.getItem("favorite_breed"));
+      }
+    },
+
+    saveFavorite(raca) {
+      if (this.favorites.includes(raca)) {
+        this.favorites.splice(raca, 1);
+      } else {
+        this.favorites.push(raca);
+      }
+
+      localStorage.setItem("favorite_breed", JSON.stringify(this.favorites));
     },
 
     nextPage() {
@@ -203,9 +330,9 @@ export default {
 };
 </script>
 <style scoped>
-  @media(max-width: 600px) {
-    .responsive-row {
-      width: 68%;
-    }
+@media (max-width: 600px) {
+  .responsive-row {
+    width: 68%;
   }
+}
 </style>
